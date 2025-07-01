@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DEJEM Metrô</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 15px;
+      background: #f7f7f7;
+    }
+    .container {
+      max-width: 400px;
+      margin: auto;
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 0 8px #ccc;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    input, select, button, textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+    textarea {
+      resize: vertical;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      min-height: 100px;
+    }
+    canvas {
+      border: 1px solid #ccc;
+      margin-top: 10px;
+      border-radius: 4px;
+      width: 100% !important;
+      height: 180px !important;
+      touch-action: none;
+    }
+    button {
+      cursor: pointer;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <button onclick="location.href='index.html'" style="margin-bottom:15px; padding:8px 12px; background:#ccc; border:none; border-radius:5px; cursor:pointer;">
+      ← Voltar
+    </button>
+
+    <h2>Formulário DEJEM - Metrô</h2>
+
+    <label for="relatorio">Número do Relatório:</label>
+    <input type="text" id="relatorio" value="CPAM1-000/301.1/25" required />
+
+    <label for="dataRelatorio">Data do Relatório:</label>
+    <input type="date" id="dataRelatorio" required />
+
+    <label for="graduacao">Graduação:</label>
+    <select id="graduacao" required>
+      <option value="" disabled selected>Selecione a graduação</option>
+      <option value="SD PM">SD PM</option>
+      <option value="CB PM">CB PM</option>
+      <option value="3º SGT PM">3º SGT PM</option>
+      <option value="2º SGT PM">2º SGT PM</option>
+      <option value="1º SGT PM">1º SGT PM</option>
+      <option value="ST PM">ST PM</option>
+      <option value="ASP OF PM">ASP OF PM</option>
+      <option value="2º TEN PM">2º TEN PM</option>
+      <option value="1º TEN PM">1º TEN PM</option>
+      <option value="CAP PM">CAP PM</option>
+      <option value="MAJ PM">MAJ PM</option>
+      <option value="TEN CEL PM">TEN CEL PM</option>
+    </select>
+
+    <label for="nome">Nome Completo:</label>
+    <input type="text" id="nome" required />
+
+    <label for="matricula">Matrícula:</label>
+    <input
+      type="text"
+      id="matricula"
+      maxlength="8"
+      placeholder="000000-0"
+      pattern="^\\d{6}-\\d{1}$"
+      required
+      title="Formato: 000000-0 (6 números, hífen, 1 número)"
+    />
+
+    <label for="dataDejem">Data da DEJEM:</label>
+    <input type="date" id="dataDejem" required />
+
+    <label for="horaInicio">Horário de Início:</label>
+    <input type="time" id="horaInicio" required />
+
+    <label for="horaTermino">Horário de Término:</label>
+    <input type="time" id="horaTermino" required />
+
+    <label for="numeroID">Número da ID:</label>
+    <input type="text" id="numeroID" placeholder="Ex: 6912077" required />
+
+    <label for="aisp">AISP:</label>
+    <select id="aisp" required>
+      <option value="" disabled selected>Selecione a AISP</option>
+      <option value="METRÔ ANHANGABAÚ">METRÔ ANHANGABAÚ</option>
+      <option value="METRÔ SÉ">METRÔ SÉ</option>
+      <option value="METRÔ SÃO BENTO">METRÔ SÃO BENTO</option>
+    </select>
+
+    <label for="observacao">Observação:</label>
+    <textarea id="observacao" required>1. Relato a V. S.ª que a operação FCA AISP “Rua Florêncio de Abreu”, realizada nesta data, no horário das 14h00 às 22h00, transcorreu conforme segue:
+2. Mapa força: 
+2.1. comandante e escrituração: 1º Ten PM 114185-6 Crúvel e 3º Sgt PM 144150-7 Josimar;</textarea>
+
+    <label>Assinatura:</label>
+    <canvas id="signature-pad"></canvas>
+    <button type="button" onclick="clearSignature()">Limpar Assinatura</button>
+    <button type="button" onclick="generatePDF()">Gerar PDF</button>
+  </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+  const canvas = document.getElementById('signature-pad');
+  const ctx = canvas.getContext('2d');
+  let drawing = false;
+
+  function resizeCanvas() {
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = canvas.offsetWidth * ratio;
+    canvas.height = canvas.offsetHeight * ratio;
+    ctx.scale(ratio, ratio);
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#000';
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  function getPos(event) {
+    const rect = canvas.getBoundingClientRect();
+    let x, y;
+    if (event.touches && event.touches.length > 0) {
+      x = event.touches[0].clientX - rect.left;
+      y = event.touches[0].clientY - rect.top;
+    } else {
+      x = event.clientX - rect.left;
+      y = event.clientY - rect.top;
+    }
+    return { x, y };
+  }
+
+  canvas.addEventListener('mousedown', e => {
+    drawing = true;
+    const pos = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  });
+  canvas.addEventListener('mousemove', e => {
+    if (!drawing) return;
+    const pos = getPos(e);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+  });
+  canvas.addEventListener('mouseup', () => drawing = false);
+  canvas.addEventListener('mouseleave', () => drawing = false);
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    drawing = true;
+    const pos = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  });
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (!drawing) return;
+    const pos = getPos(e);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+  });
+  canvas.addEventListener('touchend', e => {
+    e.preventDefault();
+    drawing = false;
+  });
+
+  const matriculaInput = document.getElementById('matricula');
+  matriculaInput.addEventListener('input', e => {
+    let value = e.target.value.replace(/\\D/g, '');
+    if (value.length > 6) {
+      value = value.slice(0,6) + '-' + value.slice(6,7);
+    }
+    e.target.value = value;
+  });
+
+  function clearSignature() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function formatarDataExtenso(dataISO) {
+    const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const d = new Date(dataISO);
+    return `${d.getDate()} ${meses[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  function formatarHora(horaStr) {
+    if (!horaStr) return '';
+    const [h, m] = horaStr.split(':');
+    return `${h}:${m}`;
+  }
+
+  async function generatePDF() {
+    const { jsPDF } = window.jspdf;
+
+    const relatorio = document.getElementById('relatorio').value.trim();
+    const dataRelatorio = document.getElementById('dataRelatorio').value;
+    const graduacao = document.getElementById('graduacao').value;
+    const nome = document.getElementById('nome').value.trim();
+    const matricula = document.getElementById('matricula').value.trim();
+    const dataDejem = document.getElementById('dataDejem').value;
+    const horaInicio = document.getElementById('horaInicio').value;
+    const horaTermino = document.getElementById('horaTermino').value;
+    const numeroID = document.getElementById('numeroID').value.trim();
+    const observacao = document.getElementById('observacao').value.trim();
+    const aisp = document.getElementById('aisp').value;
+
+    if (!relatorio || !dataRelatorio || !graduacao || !nome || !matricula || !dataDejem || !horaInicio || !horaTermino || !numeroID || !observacao || !aisp) {
+      alert('Preencha todos os campos!');
+      return;
+    }
+
+    const dataRelatorioFmt = formatarDataExtenso(dataRelatorio);
+    const dataDejemFmt = formatarDataExtenso(dataDejem);
+    const horaInicioFmt = formatarHora(horaInicio);
+    const horaTerminoFmt = formatarHora(horaTermino);
+
+    const pdf = new jsPDF();
+    pdf.setFontSize(12);
+
+    pdf.text('SECRETARIA DA SEGURANÇA PÚBLICA', 20, 20);
+    pdf.setFontSize(14);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('POLÍCIA MILITAR DO ESTADO DE SÃO PAULO', 20, 28);
+    pdf.setFontSize(12);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`São Paulo, ${dataRelatorioFmt}.`, 20, 36);
+    pdf.text(`RELATÓRIO Nº ${relatorio}`, 20, 44);
+    pdf.text(`Do Cmt Op. DEJEM “${aisp}”`, 20, 52);
+    pdf.text('Ao Sr. Ch Div Op CPA/M-1.', 20, 60);
+    pdf.text('Assunto: Encaminhamento de documentação.', 20, 68);
+    pdf.text(`Data da DEJEM: ${dataDejemFmt}`, 20, 76);
+    pdf.text(`Horário: ${horaInicioFmt} às ${horaTerminoFmt}`, 20, 84);
+    pdf.text(`Número da ID: ${numeroID}`, 20, 92);
+
+    let yPos = 100;
+    yPos += 21;
+
+    const obsLines = pdf.splitTextToSize(observacao, 170);
+    pdf.text(obsLines, 20, yPos);
+    yPos += obsLines.length * 7;
+
+    const imgData = canvas.toDataURL('image/png');
+    const assinaturaNome = `${graduacao} ${matricula} ${nome.toUpperCase()}`;
+    const assinaturaNomeWidth = pdf.getTextWidth(assinaturaNome);
+    const assinaturaAltura = 30;
+    const rightMargin = 200;
+    const assinaturaX = rightMargin - Math.max(assinaturaNomeWidth + 10, 80);
+    const assinaturaY = yPos + 10;
+
+    pdf.addImage(imgData, 'PNG', assinaturaX, assinaturaY, Math.max(assinaturaNomeWidth + 10, 80), assinaturaAltura);
+    pdf.text(assinaturaNome, rightMargin - assinaturaNomeWidth, assinaturaY + assinaturaAltura + 8);
+
+    const cmtText = 'Cmt da DEJEM';
+    const cmtTextWidth = pdf.getTextWidth(cmtText);
+    const cmtTextX = assinaturaX + (Math.max(assinaturaNomeWidth + 10, 80) / 2) - (cmtTextWidth / 2);
+    pdf.text(cmtText, cmtTextX, assinaturaY + assinaturaAltura + 16);
+
+    pdf.save(`dejem_${matricula}.pdf`);
+  }
+</script>
+</body>
+</html>
